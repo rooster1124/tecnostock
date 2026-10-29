@@ -5,6 +5,9 @@
 -- Autor: Nicolas Tapia
 -- =====================================================================
 
+-- Los textos de este archivo están en UTF-8 (tildes y ñ se guardan bien)
+SET NAMES utf8mb4;
+
 -- ---------------------------------------------------------------------
 -- 1. Crear la base de datos
 -- ---------------------------------------------------------------------
@@ -18,13 +21,18 @@ USE tecnostock;
 
 -- ---------------------------------------------------------------------
 -- 2. Tabla USUARIO
---    Encargado de inventario que inicia sesión y registra movimientos.
+--    Personas que inician sesión y registran movimientos.
+--    Atributo agregado: rol (justificación: separar permisos)
+--      ENCARGADO -> administra productos, categorías y todos los movimientos
+--      VENDEDOR  -> consulta productos, registra ventas y carga stock
+--    Por defecto VENDEDOR: un usuario nuevo parte con el menor permiso.
 -- ---------------------------------------------------------------------
 CREATE TABLE usuario (
     id_usuario  INT          NOT NULL AUTO_INCREMENT,
     nombre      VARCHAR(100) NOT NULL,
     correo      VARCHAR(120) NOT NULL,
     clave       VARCHAR(255) NOT NULL,          -- hash generado con password_hash()
+    rol         ENUM('ENCARGADO', 'VENDEDOR') NOT NULL DEFAULT 'VENDEDOR',
     estado      TINYINT(1)   NOT NULL DEFAULT 1, -- 1 = activo, 0 = inactivo
 
     PRIMARY KEY (id_usuario),
@@ -82,18 +90,34 @@ CREATE INDEX idx_producto_nombre ON producto (nombre);
 -- 5. Tabla MOVIMIENTO
 --    RN03: fecha, tipo, cantidad, producto y usuario obligatorios
 --    RN05: ON DELETE RESTRICT impide borrar un producto con movimientos
+--
+--    Atributos agregados a los sugeridos por la pauta (justificación):
+--    - motivo: clasifica el movimiento (una venta es una SALIDA con
+--      motivo 'Venta'; una carga de stock es una ENTRADA con motivo
+--      'Compra a proveedor'). Permite reportar las ventas del día.
+--    - precio_unitario: precio del producto en el momento del movimiento.
+--      Si el precio cambia después, el historial conserva el valor real.
 -- ---------------------------------------------------------------------
 CREATE TABLE movimiento (
-    id_movimiento INT          NOT NULL AUTO_INCREMENT,
-    fecha_hora    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    tipo          ENUM('ENTRADA', 'SALIDA') NOT NULL,
-    cantidad      INT          NOT NULL,
-    observacion   VARCHAR(255) NULL,
-    id_producto   INT          NOT NULL,
-    id_usuario    INT          NOT NULL,
+    id_movimiento   INT          NOT NULL AUTO_INCREMENT,
+    fecha_hora      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tipo            ENUM('ENTRADA', 'SALIDA') NOT NULL,
+    motivo          VARCHAR(30)  NOT NULL,
+    cantidad        INT          NOT NULL,
+    precio_unitario INT          NOT NULL DEFAULT 0,
+    observacion     VARCHAR(255) NULL,
+    id_producto     INT          NOT NULL,
+    id_usuario      INT          NOT NULL,
 
     PRIMARY KEY (id_movimiento),
     CONSTRAINT chk_movimiento_cantidad CHECK (cantidad > 0),
+    CONSTRAINT chk_movimiento_precio   CHECK (precio_unitario >= 0),
+    -- Cada tipo de movimiento solo acepta sus propios motivos
+    CONSTRAINT chk_movimiento_motivo CHECK (
+        (tipo = 'ENTRADA' AND motivo IN ('Stock inicial', 'Compra a proveedor', 'Devolución de cliente', 'Ajuste de inventario'))
+        OR
+        (tipo = 'SALIDA'  AND motivo IN ('Venta', 'Producto dañado', 'Devolución a proveedor', 'Ajuste de inventario'))
+    ),
     CONSTRAINT fk_movimiento_producto
         FOREIGN KEY (id_producto) REFERENCES producto (id_producto)
         ON UPDATE CASCADE
@@ -104,16 +128,21 @@ CREATE TABLE movimiento (
         ON DELETE RESTRICT
 ) ENGINE = InnoDB;
 
+-- Índice para filtrar el historial por fecha
+CREATE INDEX idx_movimiento_fecha ON movimiento (fecha_hora);
+
 -- =====================================================================
 -- DATOS DE PRUEBA
 -- =====================================================================
 
--- Usuario de prueba
---   Correo: admin@tecnostock.cl
---   Clave:  admin123
-INSERT INTO usuario (nombre, correo, clave) VALUES
+-- Usuarios de prueba
+--   Encargado: admin@tecnostock.cl    / admin123
+--   Vendedor:  vendedor@tecnostock.cl / vendedor123
+INSERT INTO usuario (nombre, correo, clave, rol) VALUES
 ('Encargado de Inventario', 'admin@tecnostock.cl',
- '$2y$12$xtEs4.6wkR8JY1Z7Sb5Nv.tVCRkV0tUAAPR4gaeWDr8NUxIDW/C.2');
+ '$2y$12$xtEs4.6wkR8JY1Z7Sb5Nv.tVCRkV0tUAAPR4gaeWDr8NUxIDW/C.2', 'ENCARGADO'),
+('Vendedor de Tienda', 'vendedor@tecnostock.cl',
+ '$2y$12$2C4ja9v6UP1vm5cjwta/vep3Ox1z0WbuRR6rdTWfz4QLHbEZAOUBa', 'VENDEDOR');
 
 -- Categorías
 INSERT INTO categoria (nombre, descripcion) VALUES
@@ -136,20 +165,26 @@ INSERT INTO producto (codigo, nombre, descripcion, precio, stock_actual, stock_m
 ('ALM-001', 'Pendrive 64GB',             'Memoria USB 3.0 de 64GB',                          7990, 30, 10, 4),
 ('MOV-001', 'Soporte de celular auto',   'Soporte magnético para rejilla de ventilación',    5990,  2, 4, 5); -- (*)
 
+-- Producto desactivado (ya no se comercializa): tiene movimientos, por eso
+-- no se elimina, solo queda con estado = 0 (RN05)
+INSERT INTO producto (codigo, nombre, descripcion, precio, stock_actual, stock_minimo, estado, id_categoria) VALUES
+('CAB-003', 'Cable HDMI 1.4 2m', 'Modelo descontinuado', 3990, 10, 5, 0, 2);
+
 -- Movimientos
 -- Stock inicial de cada producto registrado como ENTRADA (decisión de diseño)
-INSERT INTO movimiento (fecha_hora, tipo, cantidad, observacion, id_producto, id_usuario) VALUES
-('2026-10-01 09:00:00', 'ENTRADA', 20, 'Stock inicial', 1, 1),
-('2026-10-01 09:05:00', 'ENTRADA', 10, 'Stock inicial', 2, 1),
-('2026-10-01 09:10:00', 'ENTRADA', 50, 'Stock inicial', 3, 1),
-('2026-10-01 09:15:00', 'ENTRADA', 15, 'Stock inicial', 4, 1),
-('2026-10-01 09:20:00', 'ENTRADA', 25, 'Stock inicial', 5, 1),
-('2026-10-01 09:25:00', 'ENTRADA',  6, 'Stock inicial', 6, 1),
-('2026-10-01 09:30:00', 'ENTRADA', 30, 'Stock inicial', 7, 1),
-('2026-10-01 09:35:00', 'ENTRADA',  5, 'Stock inicial', 8, 1),
+INSERT INTO movimiento (fecha_hora, tipo, motivo, cantidad, precio_unitario, observacion, id_producto, id_usuario) VALUES
+('2026-10-01 09:00:00', 'ENTRADA', 'Stock inicial', 20, 24990, NULL, 1, 1),
+('2026-10-01 09:05:00', 'ENTRADA', 'Stock inicial', 10, 19990, NULL, 2, 1),
+('2026-10-01 09:10:00', 'ENTRADA', 'Stock inicial', 50,  4990, NULL, 3, 1),
+('2026-10-01 09:15:00', 'ENTRADA', 'Stock inicial', 15, 12990, NULL, 4, 1),
+('2026-10-01 09:20:00', 'ENTRADA', 'Stock inicial', 25,  8990, NULL, 5, 1),
+('2026-10-01 09:25:00', 'ENTRADA', 'Stock inicial',  6, 39990, NULL, 6, 1),
+('2026-10-01 09:30:00', 'ENTRADA', 'Stock inicial', 30,  7990, NULL, 7, 1),
+('2026-10-01 09:35:00', 'ENTRADA', 'Stock inicial',  5,  5990, NULL, 8, 1),
+('2026-10-01 09:40:00', 'ENTRADA', 'Stock inicial', 10,  3990, NULL, 9, 1),
 -- Salidas posteriores
-('2026-10-03 11:00:00', 'SALIDA',   5, 'Venta en tienda',     1, 1),
-('2026-10-03 12:30:00', 'SALIDA',   7, 'Venta en tienda',     2, 1),
-('2026-10-04 10:00:00', 'SALIDA',  10, 'Venta por mayor',     3, 1),
-('2026-10-05 16:45:00', 'SALIDA',   7, 'Venta en tienda',     4, 1),
-('2026-10-06 15:20:00', 'SALIDA',   3, 'Producto defectuoso', 8, 1);
+('2026-10-03 11:00:00', 'SALIDA', 'Venta',            5, 24990, 'Venta en tienda',             1, 1),
+('2026-10-03 12:30:00', 'SALIDA', 'Venta',            7, 19990, 'Venta en tienda',             2, 1),
+('2026-10-04 10:00:00', 'SALIDA', 'Venta',           10,  4990, 'Venta por mayor',             3, 1),
+('2026-10-05 16:45:00', 'SALIDA', 'Venta',            7, 12990, 'Venta en tienda',             4, 1),
+('2026-10-06 15:20:00', 'SALIDA', 'Producto dañado',  3,  5990, 'Llegaron con el imán suelto', 8, 1);

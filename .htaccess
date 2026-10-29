@@ -1,0 +1,15 @@
+# =====================================================================
+# Seguridad de Apache para TecnoStock
+# =====================================================================
+
+# No mostrar el listado de archivos de una carpeta sin index.php
+Options -Indexes
+
+# Bloquear el acceso directo desde el navegador a carpetas internas.
+# PHP sí puede usarlas con require; el navegador recibe "404 No encontrado".
+RedirectMatch 404 /(\.git|config|includes|database|docs)(/|$)
+
+# Bloquear archivos que no deben descargarse (script SQL, README, .gitkeep, etc.)
+<FilesMatch "\.(sql|md|gitkeep|gitignore|log|ini)$">
+    Require all denied
+</FilesMatch>

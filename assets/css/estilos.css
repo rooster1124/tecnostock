@@ -1,10 +1,162 @@
+:root {
+    --marca: #4f46e5;
+    --marca-oscuro: #4338ca;
+    --marca-suave: #eef2ff;
+    --fondo: #f4f6fb;
+    --nav-1: #0f172a;
+    --nav-2: #1e293b;
+    --bs-body-font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --bs-primary: #4f46e5;
+    --bs-primary-rgb: 79, 70, 229;
+    --bs-link-color: #4f46e5;
+    --bs-link-color-rgb: 79, 70, 229;
+    --bs-link-hover-color: #4338ca;
+    --bs-border-radius: .6rem;
+}
+
+body.app {
+    background-color: var(--fondo);
+    color: #1e293b;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--marca);
+    --bs-btn-border-color: var(--marca);
+    --bs-btn-hover-bg: var(--marca-oscuro);
+    --bs-btn-hover-border-color: var(--marca-oscuro);
+    --bs-btn-active-bg: var(--marca-oscuro);
+    --bs-btn-active-border-color: var(--marca-oscuro);
+    --bs-btn-disabled-bg: var(--marca);
+    --bs-btn-disabled-border-color: var(--marca);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--marca);
+    --bs-btn-border-color: var(--marca);
+    --bs-btn-hover-bg: var(--marca);
+    --bs-btn-hover-border-color: var(--marca);
+    --bs-btn-active-bg: var(--marca-oscuro);
+    --bs-btn-active-border-color: var(--marca-oscuro);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #a5b4fc;
+    box-shadow: 0 0 0 .2rem rgba(79, 70, 229, .15);
+}
+
+.navbar-app {
+    background: linear-gradient(90deg, var(--nav-1), var(--nav-2));
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .25);
+}
+
+.navbar-app .nav-link {
+    border-radius: .5rem;
+    padding: .45rem .8rem !important;
+    color: rgba(255, 255, 255, .7);
+}
+
+.navbar-app .nav-link:hover,
+.navbar-app .nav-link.active {
+    color: #fff;
+    background: rgba(255, 255, 255, .1);
+}
+
+.marca-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: .6rem;
+    background: var(--marca);
+    font-size: 1.1rem;
+}
+
+.usuario-chip {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    color: rgba(255, 255, 255, .85);
+}
+
+.usuario-chip .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .15);
+    font-weight: 600;
+    color: #fff;
+}
+
+.rol-encargado { background: #fbbf24; color: #1e293b; }
+.rol-vendedor  { background: #38bdf8; color: #0f172a; }
+
+.card {
+    border: 1px solid #e5e7eb;
+    border-radius: .9rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+}
+
+.card-header {
+    background: #fff;
+    border-bottom: 1px solid #eef0f4;
+    font-weight: 600;
+}
+
+.table > thead th {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #64748b;
+    font-weight: 600;
+    background: #f8fafc;
+}
+
+h1 { font-weight: 700; letter-spacing: -.01em; }
+
+.stat-card {
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+a:hover > .stat-card {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .08);
+}
+
+.stat-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: .9rem;
+    font-size: 1.5rem;
+}
+
+.stat-card .valor {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #0f172a;
+}
+
+.stat-card .etiqueta {
+    font-size: .85rem;
+    color: #64748b;
+}
+
 .fila-critica td {
-    background-color: #f8d7da;
+    background-color: #fef2f2;
 }
 
 .fila-inactiva td {
-    color: #6c757d;
-    background-color: #f1f3f5;
+    color: #94a3b8;
+    background-color: #f8fafc;
 }
 
 .num {
@@ -13,8 +165,46 @@
     white-space: nowrap;
 }
 
-.tarjeta-resumen .valor {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
+.barra-stock {
+    height: 6px;
+    min-width: 80px;
+    background: #e2e8f0;
+    border-radius: 999px;
+}
+
+.login-page {
+    min-height: 100vh;
+    background: var(--fondo);
+}
+
+.login-marca {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(129, 140, 248, .35), transparent 45%),
+        radial-gradient(circle at 80% 80%, rgba(56, 189, 248, .25), transparent 40%),
+        linear-gradient(135deg, var(--nav-1), #312e81);
+    color: #fff;
+}
+
+.login-marca .marca-icono {
+    width: 52px;
+    height: 52px;
+    font-size: 1.6rem;
+}
+
+.login-marca li {
+    margin-bottom: .9rem;
+    color: rgba(255, 255, 255, .85);
+}
+
+.login-marca li i {
+    color: #a5b4fc;
+    margin-right: .5rem;
+}
+
+.login-caja {
+    max-width: 400px;
+}
+
+.demo-cuentas .btn {
+    font-size: .8rem;
 }

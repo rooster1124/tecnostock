@@ -10,6 +10,9 @@ function activo(string $nombre, string $seccion): string
 {
     return $nombre === $seccion ? ' active' : '';
 }
+
+$nombreUsuario = $_SESSION['nombre'] ?? '';
+$inicial = strtoupper(substr($nombreUsuario, 0, 1));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -17,26 +20,30 @@ function activo(string $nombre, string $seccion): string
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($titulo) ?> | TecnoStock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= BASE_URL ?>assets/css/estilos.css" rel="stylesheet">
 </head>
-<body class="bg-light">
+<body class="app">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-       <div class="container-fluid px-lg-5">
-        <a class="navbar-brand fw-bold" href="<?= BASE_URL ?>inicio.php">
-            <i class="bi bi-box-seam"></i> TecnoStock
+<nav class="navbar navbar-expand-lg navbar-dark navbar-app mb-4">
+    <div class="container-fluid px-lg-5">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="<?= BASE_URL ?>inicio.php">
+            <span class="marca-icono"><i class="bi bi-box-seam"></i></span>
+            <span class="fw-bold">TecnoStock</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"
                 aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="menu">
-            <ul class="navbar-nav me-auto">
+            <ul class="navbar-nav me-auto ms-lg-3">
                 <li class="nav-item">
                     <a class="nav-link text-nowrap<?= activo('inicio', $seccion) ?>" href="<?= BASE_URL ?>inicio.php">
-                        <i class="bi bi-house"></i> Inicio
+                        <i class="bi bi-speedometer2"></i> Inicio
                     </a>
                 </li>
                 <li class="nav-item">
@@ -67,13 +74,14 @@ function activo(string $nombre, string $seccion): string
                 <a class="btn btn-primary btn-sm text-nowrap" href="<?= BASE_URL ?>movimientos/registrar.php?tipo=ENTRADA&amp;motivo=Compra%20a%20proveedor">
                     <i class="bi bi-box-arrow-in-down"></i> Cargar stock
                 </a>
-                <span class="navbar-text small ms-lg-2 d-lg-none d-xxl-inline">
-                    <i class="bi bi-person-circle"></i> <?= e($_SESSION['nombre'] ?? '') ?>
-                </span>
-                <span class="badge <?= es_encargado() ? 'bg-warning text-dark' : 'bg-info text-dark' ?>" title="Rol del usuario">
-                    <?= es_encargado() ? 'Encargado' : 'Vendedor' ?>
-                </span>
-                <a class="btn btn-outline-light btn-sm text-nowrap" href="<?= BASE_URL ?>logout.php" title="Cerrar sesión de <?= e($_SESSION['nombre'] ?? '') ?>">
+                <div class="usuario-chip ms-lg-2" title="<?= e($nombreUsuario) ?>">
+                    <span class="avatar"><?= e($inicial) ?></span>
+                    <span class="d-none d-xxl-inline small text-nowrap"><?= e($nombreUsuario) ?></span>
+                    <span class="badge <?= es_encargado() ? 'rol-encargado' : 'rol-vendedor' ?>">
+                        <?= es_encargado() ? 'Encargado' : 'Vendedor' ?>
+                    </span>
+                </div>
+                <a class="btn btn-outline-light btn-sm text-nowrap" href="<?= BASE_URL ?>logout.php" title="Cerrar sesión">
                     <i class="bi bi-box-arrow-right"></i> Salir
                 </a>
             </div>
@@ -81,7 +89,7 @@ function activo(string $nombre, string $seccion): string
     </div>
 </nav>
 
-   <main class="container-fluid px-lg-5">
+<main class="container-fluid px-lg-5 pb-4">
 <?php if ($criticos > 0 && $seccion !== 'inicio'): ?>
     <div class="alert alert-danger d-flex align-items-center py-2" role="alert">
         <i class="bi bi-exclamation-triangle-fill me-2"></i>

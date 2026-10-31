@@ -45,6 +45,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const verClave = document.getElementById('ver-clave');
+    if (verClave) {
+        verClave.addEventListener('click', function () {
+            const clave = document.getElementById('clave');
+            const oculta = clave.type === 'password';
+            clave.type = oculta ? 'text' : 'password';
+            verClave.innerHTML = oculta ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+        });
+    }
+
+    document.querySelectorAll('.demo-cuentas [data-correo]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            document.getElementById('correo').value = boton.dataset.correo;
+            document.getElementById('clave').value = boton.dataset.clave;
+        });
+    });
+
     const formMov = document.getElementById('form-movimiento');
     if (formMov) {
         const motivos      = JSON.parse(formMov.dataset.motivos);

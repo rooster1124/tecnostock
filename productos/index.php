@@ -1,26 +1,19 @@
 <?php
-/**
- * Listado y búsqueda de productos (RF03, RF04) con indicador de stock crítico (RF08).
- */
 require_once __DIR__ . '/../includes/sesion.php';
 
-// ----- Filtros recibidos por GET -----
 $q           = texto($_GET['q'] ?? '');
 $idCategoria = entero($_GET['categoria'] ?? null, 1);
-$estado      = texto($_GET['estado'] ?? 'activos');   // activos | inactivos | todos
+$estado      = texto($_GET['estado'] ?? 'activos');
 $soloCritico = !empty($_GET['critico']);
 
 if (!in_array($estado, ['activos', 'inactivos', 'todos'], true)) {
     $estado = 'activos';
 }
 
-// ----- Se arma la consulta solo con los filtros usados -----
-// Los valores nunca se pegan en el SQL: van en $parametros (consulta preparada).
 $condiciones = [];
 $parametros  = [];
 
 if ($q !== '') {
-    // RF04: busca por nombre, código o nombre de la categoría
     $condiciones[] = '(p.nombre LIKE ? OR p.codigo LIKE ? OR c.nombre LIKE ?)';
     $patron = '%' . $q . '%';
     array_push($parametros, $patron, $patron, $patron);
@@ -46,7 +39,6 @@ $sql = 'SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.precio,
 if ($condiciones) {
     $sql .= ' WHERE ' . implode(' AND ', $condiciones);
 }
-// Primero los críticos, después por nombre
 $sql .= ' ORDER BY (p.estado = 1 AND p.stock_actual < p.stock_minimo) DESC, p.nombre';
 
 $stmt = $pdo->prepare($sql);
@@ -69,7 +61,6 @@ require __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
-<!-- Buscador -->
 <form method="get" class="card card-body mb-3">
     <div class="row g-2 align-items-end">
         <div class="col-md-4">
@@ -112,7 +103,7 @@ require __DIR__ . '/../includes/header.php';
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th>Código</th>
                     <th>Producto</th>
@@ -144,10 +135,15 @@ require __DIR__ . '/../includes/header.php';
                         <?php if (!$p['estado']): ?>
                             <span class="badge bg-secondary">Desactivado</span>
                         <?php else: ?>
+                            <?php $barra = barra_stock((int) $p['stock_actual'], (int) $p['stock_minimo']); ?>
                             <span class="badge <?= $stock['clase'] ?>">
                                 <?php if ($critico): ?><i class="bi bi-exclamation-triangle-fill"></i><?php endif; ?>
                                 <?= e($stock['texto']) ?>
                             </span>
+                            <div class="progress barra-stock mt-2" role="progressbar" aria-label="Nivel de stock"
+                                 aria-valuenow="<?= $barra['porcentaje'] ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar <?= $barra['color'] ?>" style="width: <?= $barra['porcentaje'] ?>%"></div>
+                            </div>
                         <?php endif; ?>
                     </td>
                     <td class="text-end text-nowrap">
@@ -172,7 +168,6 @@ require __DIR__ . '/../includes/header.php';
                         </a>
 
                         <?php if (es_encargado()): ?>
-                        <!-- Desactivar / activar (borrado lógico) -->
                         <form method="post" action="estado.php" class="d-inline"
                               data-confirm="<?= $p['estado']
                                   ? '¿Desactivar ' . e($p['nombre']) . '? Ya no aparecerá para registrar movimientos.'
@@ -186,7 +181,6 @@ require __DIR__ . '/../includes/header.php';
                             <?php endif; ?>
                         </form>
 
-                        <!-- RN05: solo se puede eliminar si nunca tuvo movimientos -->
                         <?php if ((int) $p['movimientos'] === 0): ?>
                             <form method="post" action="eliminar.php" class="d-inline"
                                   data-confirm="<?= '¿Eliminar definitivamente ' . e($p['nombre']) . '? Esta acción no se puede deshacer.' ?>">

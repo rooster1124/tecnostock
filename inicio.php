@@ -28,41 +28,58 @@ $seccion = 'inicio';
 require __DIR__ . '/includes/header.php';
 ?>
 
-<h1 class="h3 mb-4">Bienvenido, <?= e($_SESSION['nombre']) ?></h1>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Hola, <?= e($_SESSION['nombre']) ?> 👋</h1>
+        <div class="text-muted">Este es el resumen de tu inventario de hoy.</div>
+    </div>
+    <div class="text-muted small"><i class="bi bi-calendar3"></i> <?= date('d-m-Y') ?></div>
+</div>
 
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-sm-6 col-xl-3">
         <a href="productos/index.php" class="text-decoration-none">
-            <div class="card border-primary h-100 tarjeta-resumen"><div class="card-body">
-                <div class="text-muted small">Productos activos</div>
-                <div class="valor text-primary"><?= $totalProductos ?></div>
-            </div></div>
-        </a>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <a href="productos/index.php?critico=1" class="text-decoration-none">
-            <div class="card h-100 tarjeta-resumen <?= $totalCriticos > 0 ? 'border-danger' : 'border-success' ?>"><div class="card-body">
-                <div class="text-muted small">Stock crítico</div>
-                <div class="valor <?= $totalCriticos > 0 ? 'text-danger' : 'text-success' ?>">
-                    <?php if ($totalCriticos > 0): ?><i class="bi bi-exclamation-triangle-fill"></i><?php endif; ?>
-                    <?= $totalCriticos ?>
+            <div class="card stat-card h-100"><div class="card-body d-flex align-items-center gap-3">
+                <span class="stat-icono bg-primary-subtle text-primary"><i class="bi bi-boxes"></i></span>
+                <div>
+                    <div class="etiqueta">Productos activos</div>
+                    <div class="valor"><?= $totalProductos ?></div>
                 </div>
             </div></div>
         </a>
     </div>
-    <div class="col-sm-6 col-lg-3">
-        <a href="movimientos/index.php?motivo=Venta&amp;desde=<?= date('Y-m-d') ?>&amp;hasta=<?= date('Y-m-d') ?>" class="text-decoration-none">
-            <div class="card border-success h-100 tarjeta-resumen"><div class="card-body">
-                <div class="text-muted small">Ventas de hoy (<?= (int) $ventasHoy['cantidad'] ?>)</div>
-                <div class="valor text-success"><?= formato_precio($ventasHoy['total']) ?></div>
+    <div class="col-sm-6 col-xl-3">
+        <a href="productos/index.php?critico=1" class="text-decoration-none">
+            <div class="card stat-card h-100"><div class="card-body d-flex align-items-center gap-3">
+                <span class="stat-icono <?= $totalCriticos > 0 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success' ?>">
+                    <i class="bi <?= $totalCriticos > 0 ? 'bi-exclamation-triangle' : 'bi-check-circle' ?>"></i>
+                </span>
+                <div>
+                    <div class="etiqueta">Stock crítico</div>
+                    <div class="valor <?= $totalCriticos > 0 ? 'text-danger' : '' ?>"><?= $totalCriticos ?></div>
+                </div>
             </div></div>
         </a>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-sm-6 col-xl-3">
+        <a href="movimientos/index.php?motivo=Venta&amp;desde=<?= date('Y-m-d') ?>&amp;hasta=<?= date('Y-m-d') ?>" class="text-decoration-none">
+            <div class="card stat-card h-100"><div class="card-body d-flex align-items-center gap-3">
+                <span class="stat-icono bg-success-subtle text-success"><i class="bi bi-cash-coin"></i></span>
+                <div>
+                    <div class="etiqueta">Ventas de hoy (<?= (int) $ventasHoy['cantidad'] ?>)</div>
+                    <div class="valor"><?= formato_precio($ventasHoy['total']) ?></div>
+                </div>
+            </div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
         <a href="movimientos/index.php?desde=<?= date('Y-m-d') ?>&amp;hasta=<?= date('Y-m-d') ?>" class="text-decoration-none">
-            <div class="card border-secondary h-100 tarjeta-resumen"><div class="card-body">
-                <div class="text-muted small">Movimientos de hoy</div>
-                <div class="valor text-dark"><?= $movimientosHoy ?></div>
+            <div class="card stat-card h-100"><div class="card-body d-flex align-items-center gap-3">
+                <span class="stat-icono bg-info-subtle text-info-emphasis"><i class="bi bi-arrow-left-right"></i></span>
+                <div>
+                    <div class="etiqueta">Movimientos de hoy</div>
+                    <div class="valor"><?= $movimientosHoy ?></div>
+                </div>
             </div></div>
         </a>
     </div>
@@ -70,16 +87,19 @@ require __DIR__ . '/includes/header.php';
 
 <div class="row g-4">
     <div class="col-lg-7">
-        <div class="card <?= $criticosLista ? 'border-danger' : '' ?>">
-            <div class="card-header fw-semibold <?= $criticosLista ? 'bg-danger text-white' : '' ?>">
-                <i class="bi bi-exclamation-triangle-fill"></i> Productos con stock crítico
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-exclamation-triangle-fill text-danger"></i> Productos con stock crítico</span>
+                <?php if ($criticosLista): ?>
+                    <span class="badge bg-danger-subtle text-danger"><?= count($criticosLista) ?> por reponer</span>
+                <?php endif; ?>
             </div>
             <?php if (!$criticosLista): ?>
                 <div class="card-body text-success"><i class="bi bi-check-circle"></i> Todos los productos tienen stock suficiente.</div>
             <?php else: ?>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
                                 <th>Producto</th>
                                 <th class="num">Stock</th>
@@ -114,8 +134,8 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header fw-semibold"><i class="bi bi-clock-history"></i> Últimos movimientos</div>
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-clock-history text-primary"></i> Últimos movimientos</div>
             <ul class="list-group list-group-flush">
                 <?php foreach ($ultimos as $m): ?>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -123,7 +143,7 @@ require __DIR__ . '/includes/header.php';
                             <div class="small fw-semibold"><?= e($m['producto']) ?></div>
                             <div class="small text-muted"><?= e(formato_fecha($m['fecha_hora'])) ?> · <?= e($m['motivo']) ?></div>
                         </div>
-                        <span class="badge <?= $m['tipo'] === 'ENTRADA' ? 'bg-primary' : 'bg-danger' ?>">
+                        <span class="badge <?= $m['tipo'] === 'ENTRADA' ? 'bg-primary-subtle text-primary' : 'bg-danger-subtle text-danger' ?>">
                             <?= $m['tipo'] === 'ENTRADA' ? '+' : '-' ?><?= (int) $m['cantidad'] ?>
                         </span>
                     </li>
@@ -132,7 +152,7 @@ require __DIR__ . '/includes/header.php';
                     <li class="list-group-item text-muted">Sin movimientos.</li>
                 <?php endif; ?>
             </ul>
-            <div class="card-footer text-end">
+            <div class="card-footer bg-white text-end">
                 <a href="movimientos/index.php" class="small">Ver historial completo</a>
             </div>
         </div>

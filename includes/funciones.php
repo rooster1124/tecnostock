@@ -125,3 +125,17 @@ function estado_stock(int $actual, int $minimo): array
     }
     return ['texto' => 'Normal', 'clase' => 'bg-success'];
 }
+
+function barra_stock(int $actual, int $minimo): array
+{
+    $referencia = max($minimo * 2, 1);
+    $porcentaje = (int) min(100, round($actual * 100 / $referencia));
+    if ($actual < $minimo) {
+        $color = 'bg-danger';
+    } elseif ($actual < $minimo * 1.5) {
+        $color = 'bg-warning';
+    } else {
+        $color = 'bg-success';
+    }
+    return ['porcentaje' => $porcentaje, 'color' => $color];
+}

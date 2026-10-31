@@ -1,19 +1,12 @@
 <?php
-/**
- * Historial de movimientos (RF10) con filtros y total de ventas.
- */
 require_once __DIR__ . '/../includes/sesion.php';
 
-// ----- Filtros -----
 $tipo       = texto($_GET['tipo'] ?? '');
 $motivo     = texto($_GET['motivo'] ?? '');
 $idProducto = entero($_GET['id_producto'] ?? null, 1);
 $desde      = texto($_GET['desde'] ?? '');
 $hasta      = texto($_GET['hasta'] ?? '');
 
-/**
- * Devuelve la fecha si tiene formato AAAA-MM-DD válido; si no, cadena vacía.
- */
 function fecha_valida(string $f): string
 {
     $d = DateTime::createFromFormat('Y-m-d', $f);
@@ -52,7 +45,6 @@ if ($hasta !== '') {
 }
 $where = $condiciones ? ' WHERE ' . implode(' AND ', $condiciones) : '';
 
-// Movimientos (los 300 más recientes que cumplan los filtros)
 $stmt = $pdo->prepare(
     'SELECT m.id_movimiento, m.fecha_hora, m.tipo, m.motivo, m.cantidad, m.precio_unitario,
             m.observacion, p.codigo, p.nombre AS producto, u.nombre AS usuario
@@ -65,7 +57,6 @@ $stmt = $pdo->prepare(
 $stmt->execute($parametros);
 $movimientos = $stmt->fetchAll();
 
-// Totales de todos los movimientos filtrados
 $stmt = $pdo->prepare(
     "SELECT
         COALESCE(SUM(CASE WHEN m.tipo = 'ENTRADA' THEN m.cantidad END), 0) AS unidades_entrada,
@@ -94,7 +85,6 @@ require __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<!-- Filtros -->
 <form method="get" class="card card-body mb-3">
     <div class="row g-2 align-items-end">
         <div class="col-md-2">
@@ -140,7 +130,6 @@ require __DIR__ . '/../includes/header.php';
     </div>
 </form>
 
-<!-- Totales -->
 <div class="row g-3 mb-3">
     <div class="col-md-4">
         <div class="card border-primary"><div class="card-body py-2">
@@ -165,7 +154,7 @@ require __DIR__ . '/../includes/header.php';
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover table-sm align-middle mb-0">
-            <thead class="table-light">
+            <thead>
                 <tr>
                     <th>Fecha y hora</th>
                     <th>Tipo</th>

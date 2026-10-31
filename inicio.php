@@ -23,6 +23,35 @@ $ultimos = $pdo->query(
      ORDER BY m.fecha_hora DESC, m.id_movimiento DESC LIMIT 5'
 )->fetchAll();
 
+$stmt = $pdo->query(
+    "SELECT DATE(fecha_hora) AS dia, SUM(cantidad * precio_unitario) AS total, SUM(cantidad) AS unidades
+     FROM movimiento
+     WHERE motivo = 'Venta' AND fecha_hora >= CURDATE() - INTERVAL 6 DAY
+     GROUP BY DATE(fecha_hora)"
+);
+$ventasPorDia = [];
+foreach ($stmt as $fila) {
+    $ventasPorDia[$fila['dia']] = $fila;
+}
+
+$diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+$grafico = [];
+for ($i = 6; $i >= 0; $i--) {
+    $fecha = date('Y-m-d', strtotime("-$i days"));
+    $grafico[] = [
+        'etiqueta' => $i === 0 ? 'Hoy' : $diasSemana[(int) date('w', strtotime($fecha))] . ' ' . date('d', strtotime($fecha)),
+        'total'    => (int) ($ventasPorDia[$fecha]['total'] ?? 0),
+        'unidades' => (int) ($ventasPorDia[$fecha]['unidades'] ?? 0),
+    ];
+}
+$totalSemana    = array_sum(array_column($grafico, 'total'));
+$unidadesSemana = array_sum(array_column($grafico, 'unidades'));
+
+$scriptsExtra = [
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.js',
+    BASE_URL . 'assets/js/grafico.js',
+];
+
 $titulo  = 'Inicio';
 $seccion = 'inicio';
 require __DIR__ . '/includes/header.php';
@@ -85,9 +114,53 @@ require __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-7">
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
         <div class="card h-100">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span><i class="bi bi-bar-chart-line text-primary"></i> Ventas de los últimos 7 días</span>
+                <span class="small text-muted">
+                    Total: <strong class="text-dark"><?= formato_precio($totalSemana) ?></strong>
+                    · <?= $unidadesSemana ?> unidad(es)
+                </span>
+            </div>
+            <div class="card-body">
+                <div style="height: 280px">
+                    <canvas id="grafico-ventas" data-ventas='<?= e(json_encode($grafico, JSON_UNESCAPED_UNICODE)) ?>'></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-clock-history text-primary"></i> Últimos movimientos</div>
+            <ul class="list-group list-group-flush">
+                <?php foreach ($ultimos as $m): ?>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small fw-semibold"><?= e($m['producto']) ?></div>
+                            <div class="small text-muted"><?= e(formato_fecha($m['fecha_hora'])) ?> · <?= e($m['motivo']) ?></div>
+                        </div>
+                        <span class="badge <?= $m['tipo'] === 'ENTRADA' ? 'bg-primary-subtle text-primary' : 'bg-danger-subtle text-danger' ?>">
+                            <?= $m['tipo'] === 'ENTRADA' ? '+' : '-' ?><?= (int) $m['cantidad'] ?>
+                        </span>
+                    </li>
+                <?php endforeach; ?>
+                <?php if (!$ultimos): ?>
+                    <li class="list-group-item text-muted">Sin movimientos.</li>
+                <?php endif; ?>
+            </ul>
+            <div class="card-footer bg-white text-end">
+                <a href="movimientos/index.php" class="small">Ver historial completo</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-exclamation-triangle-fill text-danger"></i> Productos con stock crítico</span>
                 <?php if ($criticosLista): ?>
@@ -130,31 +203,6 @@ require __DIR__ . '/includes/header.php';
                     </table>
                 </div>
             <?php endif; ?>
-        </div>
-    </div>
-
-    <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header"><i class="bi bi-clock-history text-primary"></i> Últimos movimientos</div>
-            <ul class="list-group list-group-flush">
-                <?php foreach ($ultimos as $m): ?>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="small fw-semibold"><?= e($m['producto']) ?></div>
-                            <div class="small text-muted"><?= e(formato_fecha($m['fecha_hora'])) ?> · <?= e($m['motivo']) ?></div>
-                        </div>
-                        <span class="badge <?= $m['tipo'] === 'ENTRADA' ? 'bg-primary-subtle text-primary' : 'bg-danger-subtle text-danger' ?>">
-                            <?= $m['tipo'] === 'ENTRADA' ? '+' : '-' ?><?= (int) $m['cantidad'] ?>
-                        </span>
-                    </li>
-                <?php endforeach; ?>
-                <?php if (!$ultimos): ?>
-                    <li class="list-group-item text-muted">Sin movimientos.</li>
-                <?php endif; ?>
-            </ul>
-            <div class="card-footer bg-white text-end">
-                <a href="movimientos/index.php" class="small">Ver historial completo</a>
-            </div>
         </div>
     </div>
 </div>

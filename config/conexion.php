@@ -5,6 +5,8 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 
 define('BASE_URL', '/tecnostock/');
+date_default_timezone_set('America/Santiago');
+
 
 try {
     $pdo = new PDO(
@@ -17,6 +19,7 @@ try {
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]
     );
+        $pdo->exec("SET time_zone = '" . date('P') . "'");
 } catch (PDOException $e) {
     http_response_code(500);
     exit('No se pudo conectar a la base de datos. Verifique que MySQL esté iniciado en XAMPP.');

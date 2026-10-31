@@ -4,7 +4,7 @@ require_once __DIR__ . '/includes/sesion.php';
 $totalProductos = (int) $pdo->query('SELECT COUNT(*) FROM producto WHERE estado = 1')->fetchColumn();
 $totalCriticos  = (int) $pdo->query('SELECT COUNT(*) FROM producto WHERE estado = 1 AND stock_actual < stock_minimo')->fetchColumn();
 $ventasHoy      = $pdo->query(
-    "SELECT COUNT(*) AS cantidad, COALESCE(SUM(cantidad * precio_unitario), 0) AS total
+    "SELECT COALESCE(SUM(cantidad), 0) AS unidades, COALESCE(SUM(cantidad * precio_unitario), 0) AS total
      FROM movimiento WHERE motivo = 'Venta' AND DATE(fecha_hora) = CURDATE()"
 )->fetch();
 $movimientosHoy = (int) $pdo->query('SELECT COUNT(*) FROM movimiento WHERE DATE(fecha_hora) = CURDATE()')->fetchColumn();
@@ -95,7 +95,7 @@ require __DIR__ . '/includes/header.php';
             <div class="card stat-card h-100"><div class="card-body d-flex align-items-center gap-3">
                 <span class="stat-icono bg-success-subtle text-success"><i class="bi bi-cash-coin"></i></span>
                 <div>
-                    <div class="etiqueta">Ventas de hoy (<?= (int) $ventasHoy['cantidad'] ?>)</div>
+                    <div class="etiqueta">Ventas de hoy · <?= (int) $ventasHoy['unidades'] ?> unid.</div>
                     <div class="valor"><?= formato_precio($ventasHoy['total']) ?></div>
                 </div>
             </div></div>

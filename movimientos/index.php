@@ -46,7 +46,7 @@ if ($hasta !== '') {
 $where = $condiciones ? ' WHERE ' . implode(' AND ', $condiciones) : '';
 
 $stmt = $pdo->prepare(
-    'SELECT m.id_movimiento, m.fecha_hora, m.tipo, m.motivo, m.cantidad, m.precio_unitario,
+    'SELECT m.id_movimiento, m.fecha_hora, m.tipo, m.motivo, m.cantidad, m.precio_unitario, m.id_oferta,
             m.observacion, p.codigo, p.nombre AS producto, u.nombre AS usuario
      FROM movimiento m
      JOIN producto p ON p.id_producto = m.id_producto
@@ -178,7 +178,12 @@ require __DIR__ . '/../includes/header.php';
                             <span class="badge bg-danger"><i class="bi bi-arrow-up"></i> Salida</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= e($m['motivo']) ?></td>
+                    <td>
+                        <?= e($m['motivo']) ?>
+                        <?php if ($m['id_oferta']): ?>
+                            <span class="badge bg-success-subtle text-success"><i class="bi bi-tag-fill"></i> Oferta</span>
+                        <?php endif; ?>
+                    </td>
                     <td><code><?= e($m['codigo']) ?></code> <?= e($m['producto']) ?></td>
                     <td class="num fw-bold <?= $m['tipo'] === 'ENTRADA' ? 'text-primary' : 'text-danger' ?>">
                         <?= $m['tipo'] === 'ENTRADA' ? '+' : '-' ?><?= (int) $m['cantidad'] ?>

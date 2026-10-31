@@ -33,9 +33,11 @@ if ($soloCritico) {
 
 $sql = 'SELECT p.id_producto, p.codigo, p.nombre, p.descripcion, p.precio,
                p.stock_actual, p.stock_minimo, p.estado, c.nombre AS categoria,
-               (SELECT COUNT(*) FROM movimiento m WHERE m.id_producto = p.id_producto) AS movimientos
+               (SELECT COUNT(*) FROM movimiento m WHERE m.id_producto = p.id_producto) AS movimientos,
+               o.precio_oferta, o.cantidad_total - o.cantidad_vendida AS oferta_restante
         FROM producto p
-        JOIN categoria c ON c.id_categoria = p.id_categoria';
+        JOIN categoria c ON c.id_categoria = p.id_categoria
+        LEFT JOIN oferta o ON o.id_producto = p.id_producto AND o.estado = \'ACTIVA\'';
 if ($condiciones) {
     $sql .= ' WHERE ' . implode(' AND ', $condiciones);
 }
@@ -128,7 +130,17 @@ require __DIR__ . '/../includes/header.php';
                         <div class="small text-muted"><?= e($p['descripcion']) ?></div>
                     </td>
                     <td><?= e($p['categoria']) ?></td>
-                    <td class="num"><?= formato_precio($p['precio']) ?></td>
+                    <td class="num">
+                        <?php if ($p['precio_oferta']): ?>
+                            <del class="text-muted small"><?= formato_precio($p['precio']) ?></del>
+                            <div class="fw-bold text-success"><?= formato_precio($p['precio_oferta']) ?></div>
+                            <span class="badge bg-success-subtle text-success" title="Unidades que quedan con precio de oferta">
+                                <i class="bi bi-tag-fill"></i> Oferta · quedan <?= (int) $p['oferta_restante'] ?>
+                            </span>
+                        <?php else: ?>
+                            <?= formato_precio($p['precio']) ?>
+                        <?php endif; ?>
+                    </td>
                     <td class="num fw-bold"><?= (int) $p['stock_actual'] ?></td>
                     <td class="num"><?= (int) $p['stock_minimo'] ?></td>
                     <td>
@@ -158,6 +170,12 @@ require __DIR__ . '/../includes/header.php';
                             </a>
                         <?php endif; ?>
                         <?php if (es_encargado()): ?>
+                        <?php if ($p['estado'] && !$p['precio_oferta'] && $p['stock_actual'] > 0): ?>
+                        <a class="btn btn-sm btn-outline-success" title="Crear oferta"
+                           href="../ofertas/form.php?id_producto=<?= (int) $p['id_producto'] ?>">
+                            <i class="bi bi-tag"></i>
+                        </a>
+                        <?php endif; ?>
                         <a class="btn btn-sm btn-outline-primary" title="Editar" href="form.php?id=<?= (int) $p['id_producto'] ?>">
                             <i class="bi bi-pencil"></i>
                         </a>

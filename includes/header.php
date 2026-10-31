@@ -5,6 +5,7 @@ $seccion = $seccion ?? '';
 $criticos = (int) $pdo->query(
     'SELECT COUNT(*) FROM producto WHERE estado = 1 AND stock_actual < stock_minimo'
 )->fetchColumn();
+$ofertasActivas = (int) $pdo->query("SELECT COUNT(*) FROM oferta WHERE estado = 'ACTIVA'")->fetchColumn();
 
 function activo(string $nombre, string $seccion): string
 {
@@ -29,7 +30,7 @@ $inicial = strtoupper(substr($nombreUsuario, 0, 1));
 </head>
 <body class="app">
 
-<nav class="navbar navbar-expand-lg navbar-dark navbar-app mb-4">
+<nav class="navbar navbar-expand-xl navbar-dark navbar-app mb-4">
     <div class="container-fluid px-lg-5">
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= BASE_URL ?>inicio.php">
             <span class="marca-icono"><i class="bi bi-box-seam"></i></span>
@@ -40,7 +41,7 @@ $inicial = strtoupper(substr($nombreUsuario, 0, 1));
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="menu">
-            <ul class="navbar-nav me-auto ms-lg-3">
+            <ul class="navbar-nav me-auto ms-xl-3">
                 <li class="nav-item">
                     <a class="nav-link text-nowrap<?= activo('inicio', $seccion) ?>" href="<?= BASE_URL ?>inicio.php">
                         <i class="bi bi-speedometer2"></i> Inicio
@@ -62,19 +63,27 @@ $inicial = strtoupper(substr($nombreUsuario, 0, 1));
                 </li>
                 <?php endif; ?>
                 <li class="nav-item">
+                    <a class="nav-link text-nowrap<?= activo('ofertas', $seccion) ?>" href="<?= BASE_URL ?>ofertas/index.php">
+                        <i class="bi bi-percent"></i> Ofertas
+                        <?php if ($ofertasActivas > 0): ?>
+                            <span class="badge rounded-pill bg-success" title="Ofertas activas"><?= $ofertasActivas ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link text-nowrap<?= activo('movimientos', $seccion) ?>" href="<?= BASE_URL ?>movimientos/index.php">
                         <i class="bi bi-arrow-left-right"></i> Movimientos
                     </a>
                 </li>
             </ul>
-            <div class="d-flex flex-wrap flex-lg-nowrap gap-2 align-items-center">
+            <div class="d-flex flex-wrap flex-xl-nowrap gap-2 align-items-center">
                 <a class="btn btn-success btn-sm text-nowrap" href="<?= BASE_URL ?>movimientos/registrar.php?tipo=SALIDA&amp;motivo=Venta">
                     <i class="bi bi-cart-check"></i> Registrar venta
                 </a>
                 <a class="btn btn-primary btn-sm text-nowrap" href="<?= BASE_URL ?>movimientos/registrar.php?tipo=ENTRADA&amp;motivo=Compra%20a%20proveedor">
                     <i class="bi bi-box-arrow-in-down"></i> Cargar stock
                 </a>
-                <div class="usuario-chip ms-lg-2" title="<?= e($nombreUsuario) ?>">
+                <div class="usuario-chip ms-xl-2" title="<?= e($nombreUsuario) ?>">
                     <span class="avatar"><?= e($inicial) ?></span>
                     <span class="d-none d-xxl-inline small text-nowrap"><?= e($nombreUsuario) ?></span>
                     <span class="badge <?= es_encargado() ? 'rol-encargado' : 'rol-vendedor' ?>">

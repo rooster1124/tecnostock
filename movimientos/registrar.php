@@ -1,18 +1,6 @@
 <?php
-/**
- * Registrar una entrada o salida de stock (RF07).
- *  - Venta        = SALIDA con motivo "Venta"
- *  - Cargar stock = ENTRADA con motivo "Compra a proveedor"
- *
- * Reglas que se aplican aquí:
- *  RN02 la cantidad debe ser mayor que 0
- *  RN03 se guarda fecha, tipo, cantidad, producto y usuario responsable
- *  RN04 una salida no puede dejar el stock bajo cero
- *  RN06 el stock se actualiza automáticamente, dentro de una transacción
- */
 require_once __DIR__ . '/../includes/sesion.php';
 
-// Motivos que puede usar este usuario (el Vendedor solo vende y carga stock)
 $motivos = motivos_permitidos();
 
 $errores = [];
@@ -28,14 +16,12 @@ if (!isset($motivos[$datos['tipo']])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ----- 1. Leer -----
     $datos['tipo']        = texto($_POST['tipo'] ?? '');
     $datos['motivo']      = texto($_POST['motivo'] ?? '');
     $datos['id_producto'] = texto($_POST['id_producto'] ?? '');
     $datos['cantidad']    = texto($_POST['cantidad'] ?? '');
     $datos['observacion'] = texto($_POST['observacion'] ?? '');
 
-    // ----- 2. Validar en el servidor -----
     if (!csrf_valido()) {
         $errores['general'] = 'La sesión expiró. Recargue la página e intente nuevamente.';
     }
@@ -56,13 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores['observacion'] = 'La observación no puede superar los 255 caracteres.';
     }
 
-    // ----- 3. Guardar con transacción -----
     if (!$errores) {
         try {
+            // RN06: stock y movimiento se guardan juntos (transacción)
             $pdo->beginTransaction();
 
-            // FOR UPDATE bloquea la fila del producto hasta terminar,
-            // así dos ventas simultáneas no pueden dejar el stock negativo.
             $stmt = $pdo->prepare(
                 'SELECT nombre, precio, stock_actual, stock_minimo, estado
                  FROM producto WHERE id_producto = ? FOR UPDATE'
@@ -73,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$producto || !$producto['estado']) {
                 $errores['id_producto'] = 'El producto no existe o está desactivado.';
             } elseif ($datos['tipo'] === 'SALIDA' && $cantidad > $producto['stock_actual']) {
-                // RN04: la salida no puede dejar el stock bajo cero
+                // RN04: una salida no puede dejar el stock bajo cero
                 $errores['cantidad'] = 'Stock insuficiente: solo hay ' . $producto['stock_actual']
                     . ' unidad(es) de ' . $producto['nombre'] . '.';
             }
@@ -81,32 +65,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($errores) {
                 $pdo->rollBack();
             } else {
-                // RN06: actualizar el stock
                 $signo = $datos['tipo'] === 'ENTRADA' ? '+' : '-';
                 $stmt = $pdo->prepare("UPDATE producto SET stock_actual = stock_actual $signo ? WHERE id_producto = ?");
                 $stmt->execute([$cantidad, $idProducto]);
 
-                // RN03: registrar el movimiento con el usuario de la sesión
+                $esVenta = $datos['motivo'] === 'Venta';
+                $oferta  = $esVenta ? oferta_activa($pdo, $idProducto, true) : null;
+
+                // Si hay oferta, las primeras unidades van a precio de oferta y el resto a precio normal
+                $enOferta = $oferta ? min($cantidad, $oferta['restante']) : 0;
+                $lineas = [];
+                if ($enOferta > 0) {
+                    $lineas[] = [$enOferta, $oferta['precio_oferta'], $oferta['id_oferta']];
+                }
+                if ($cantidad - $enOferta > 0) {
+                    $lineas[] = [$cantidad - $enOferta, $producto['precio'], null];
+                }
+
                 $stmt = $pdo->prepare(
-                    'INSERT INTO movimiento (tipo, motivo, cantidad, precio_unitario, observacion, id_producto, id_usuario)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                    'INSERT INTO movimiento (tipo, motivo, cantidad, precio_unitario, observacion, id_producto, id_usuario, id_oferta)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([
-                    $datos['tipo'], $datos['motivo'], $cantidad, $producto['precio'],
-                    $datos['observacion'] === '' ? null : $datos['observacion'],
-                    $idProducto, $_SESSION['id_usuario'],
-                ]);
+                $total = 0;
+                foreach ($lineas as [$cant, $precio, $idOferta]) {
+                    $stmt->execute([
+                        $datos['tipo'], $datos['motivo'], $cant, $precio,
+                        $datos['observacion'] === '' ? null : $datos['observacion'],
+                        $idProducto, $_SESSION['id_usuario'], $idOferta,
+                    ]);
+                    $total += $cant * $precio;
+                }
+
+                $ofertaTerminada = false;
+                if ($enOferta > 0) {
+                    $vendidas = $oferta['cantidad_vendida'] + $enOferta;
+                    $ofertaTerminada = $vendidas >= $oferta['cantidad_total'];
+                    $stmt = $pdo->prepare(
+                        'UPDATE oferta SET cantidad_vendida = ?, estado = ?, fecha_fin = ? WHERE id_oferta = ?'
+                    );
+                    $stmt->execute([
+                        $vendidas,
+                        $ofertaTerminada ? 'FINALIZADA' : 'ACTIVA',
+                        $ofertaTerminada ? date('Y-m-d H:i:s') : null,
+                        $oferta['id_oferta'],
+                    ]);
+                }
 
                 $pdo->commit();
 
-                // ----- 4. Mensaje para el usuario -----
                 $nuevoStock = $datos['tipo'] === 'ENTRADA'
                     ? $producto['stock_actual'] + $cantidad
                     : $producto['stock_actual'] - $cantidad;
 
-                if ($datos['motivo'] === 'Venta') {
+                if ($esVenta) {
                     $texto = 'Venta registrada: ' . $cantidad . ' x ' . $producto['nombre']
-                           . ' = ' . formato_precio($cantidad * $producto['precio']) . '.';
+                           . ' = ' . formato_precio($total) . '.';
+                    if ($enOferta > 0) {
+                        $texto .= ' ' . $enOferta . ' unidad(es) con oferta a ' . formato_precio($oferta['precio_oferta']) . '.';
+                    }
+                    if ($ofertaTerminada) {
+                        $texto .= ' La oferta terminó: el producto vuelve a su precio normal ('
+                                . formato_precio($producto['precio']) . ').';
+                    }
                 } elseif ($datos['tipo'] === 'ENTRADA') {
                     $texto = 'Entrada registrada: +' . $cantidad . ' unidad(es) de ' . $producto['nombre'] . '.';
                 } else {
@@ -114,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $texto .= ' Stock actual: ' . $nuevoStock . '.';
 
-                // RF08: si el producto quedó bajo el mínimo, se avisa de inmediato
+                // RF08: aviso inmediato de stock crítico
                 if ($nuevoStock < $producto['stock_minimo']) {
                     set_mensaje('warning', $texto . ' ATENCIÓN: quedó bajo su stock mínimo ('
                         . $producto['stock_minimo'] . '). Es necesario reponer.');
@@ -132,10 +152,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Productos activos para el selector (con stock y precio para JavaScript)
 $productos = $pdo->query(
-    'SELECT id_producto, codigo, nombre, precio, stock_actual, stock_minimo
-     FROM producto WHERE estado = 1 ORDER BY nombre'
+    "SELECT p.id_producto, p.codigo, p.nombre, p.precio, p.stock_actual, p.stock_minimo,
+            o.precio_oferta, o.cantidad_total - o.cantidad_vendida AS oferta_restante
+     FROM producto p
+     LEFT JOIN oferta o ON o.id_producto = p.id_producto AND o.estado = 'ACTIVA'
+     WHERE p.estado = 1
+     ORDER BY p.nombre"
 )->fetchAll();
 
 $esVenta = $datos['tipo'] === 'SALIDA' && $datos['motivo'] === 'Venta';
@@ -165,7 +188,6 @@ require __DIR__ . '/../includes/header.php';
                       data-motivos='<?= e(json_encode($motivos, JSON_UNESCAPED_UNICODE)) ?>'>
                     <?= csrf_campo() ?>
 
-                    <!-- Tipo -->
                     <div class="mb-3">
                         <label class="form-label d-block">Tipo de movimiento <span class="text-danger">*</span></label>
                         <div class="btn-group w-100" role="group">
@@ -182,7 +204,6 @@ require __DIR__ . '/../includes/header.php';
                         <?php endif; ?>
                     </div>
 
-                    <!-- Motivo -->
                     <div class="mb-3">
                         <label for="motivo" class="form-label">Motivo <span class="text-danger">*</span></label>
                         <select id="motivo" name="motivo" required
@@ -195,7 +216,6 @@ require __DIR__ . '/../includes/header.php';
                         <div class="invalid-feedback"><?= e($errores['motivo'] ?? 'Seleccione un motivo.') ?></div>
                     </div>
 
-                    <!-- Producto -->
                     <div class="mb-3">
                         <label for="id_producto" class="form-label">Producto <span class="text-danger">*</span></label>
                         <select id="id_producto" name="id_producto" required
@@ -206,8 +226,10 @@ require __DIR__ . '/../includes/header.php';
                                         data-stock="<?= (int) $p['stock_actual'] ?>"
                                         data-minimo="<?= (int) $p['stock_minimo'] ?>"
                                         data-precio="<?= (int) $p['precio'] ?>"
+                                        data-oferta-precio="<?= (int) $p['precio_oferta'] ?>"
+                                        data-oferta-restante="<?= (int) $p['oferta_restante'] ?>"
                                         <?= (string) $datos['id_producto'] === (string) $p['id_producto'] ? 'selected' : '' ?>>
-                                    <?= e($p['codigo'] . ' - ' . $p['nombre']) ?> (stock: <?= (int) $p['stock_actual'] ?>)
+                                    <?= e($p['codigo'] . ' - ' . $p['nombre']) ?> (stock: <?= (int) $p['stock_actual'] ?>)<?= $p['precio_oferta'] ? ' · EN OFERTA' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -215,7 +237,6 @@ require __DIR__ . '/../includes/header.php';
                         <div id="info-producto" class="form-text"></div>
                     </div>
 
-                    <!-- Cantidad -->
                     <div class="mb-3">
                         <label for="cantidad" class="form-label">Cantidad <span class="text-danger">*</span></label>
                         <input type="number" id="cantidad" name="cantidad" min="1" max="100000" step="1" required
@@ -224,10 +245,8 @@ require __DIR__ . '/../includes/header.php';
                         <div class="invalid-feedback" id="error-cantidad"><?= e($errores['cantidad'] ?? 'Ingrese una cantidad mayor que 0.') ?></div>
                     </div>
 
-                    <!-- Resumen de la venta (lo completa JavaScript) -->
                     <div id="resumen-venta" class="alert alert-success d-none"></div>
 
-                    <!-- Observación -->
                     <div class="mb-3">
                         <label for="observacion" class="form-label">Observación</label>
                         <input type="text" id="observacion" name="observacion" maxlength="255"

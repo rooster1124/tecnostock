@@ -139,3 +139,17 @@ function barra_stock(int $actual, int $minimo): array
     }
     return ['porcentaje' => $porcentaje, 'color' => $color];
 }
+
+function oferta_activa(PDO $pdo, int $idProducto, bool $bloquear = false): ?array
+{
+    $sql = "SELECT id_oferta, precio_oferta, cantidad_total, cantidad_vendida,
+                   cantidad_total - cantidad_vendida AS restante
+            FROM oferta WHERE id_producto = ? AND estado = 'ACTIVA' LIMIT 1";
+    if ($bloquear) {
+        $sql .= ' FOR UPDATE';
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$idProducto]);
+    $oferta = $stmt->fetch();
+    return $oferta ?: null;
+}

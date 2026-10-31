@@ -1,10 +1,6 @@
 <?php
-/**
- * Desactiva (RF06) o vuelve a activar un producto.
- * Es un borrado lógico: el producto y su historial se conservan (RN05).
- */
 require_once __DIR__ . '/../includes/sesion.php';
-solo_encargado(); // solo el Encargado puede usar esta página
+solo_encargado();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_valido()) {
     set_mensaje('danger', 'Acción no permitida.');
@@ -28,11 +24,12 @@ if (!$producto) {
 
 if ($producto['estado']) {
     $pdo->prepare('UPDATE producto SET estado = 0 WHERE id_producto = ?')->execute([$id]);
+    $pdo->prepare("UPDATE oferta SET estado = 'CANCELADA', fecha_fin = NOW() WHERE id_producto = ? AND estado = 'ACTIVA'")
+        ->execute([$id]);
     set_mensaje('success', 'Producto "' . $producto['nombre'] . '" desactivado. Su historial de movimientos se conserva.');
     redirigir('productos/index.php');
 }
 
-// Para activarlo, su categoría también debe estar activa
 if (!$producto['categoria_activa']) {
     set_mensaje('warning', 'No se puede activar "' . $producto['nombre'] . '": su categoría está desactivada. Edítelo y asígnele otra categoría.');
     redirigir('productos/index.php?estado=inactivos');

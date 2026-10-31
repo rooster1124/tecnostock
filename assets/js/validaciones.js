@@ -62,6 +62,62 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const formOferta = document.getElementById('form-oferta');
+    if (formOferta) {
+        const selProd   = document.getElementById('id_producto');
+        const inpPrecio = document.getElementById('precio_oferta');
+        const inpCant   = document.getElementById('cantidad_total');
+        const resumenOf = document.getElementById('resumen-oferta');
+        const errPrecio = document.getElementById('error-precio-oferta');
+        const errCant   = document.getElementById('error-cantidad-oferta');
+        const clp       = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' });
+
+        function revisarOferta() {
+            const opcion = selProd.selectedOptions[0];
+            const precioOferta = parseInt(inpPrecio.value, 10);
+            const cantidad = parseInt(inpCant.value, 10);
+            inpPrecio.setCustomValidity('');
+            inpCant.setCustomValidity('');
+            inpPrecio.classList.remove('is-invalid');
+            inpCant.classList.remove('is-invalid');
+            resumenOf.classList.add('d-none');
+
+            if (!opcion || !opcion.value) {
+                return;
+            }
+            const precio = parseInt(opcion.dataset.precio, 10);
+            const stock = parseInt(opcion.dataset.stock, 10);
+            inpCant.max = stock;
+
+            if (!isNaN(precioOferta) && precioOferta >= precio) {
+                const msg = 'Debe ser menor al precio normal (' + clp.format(precio) + ').';
+                inpPrecio.setCustomValidity(msg);
+                inpPrecio.classList.add('is-invalid');
+                errPrecio.textContent = msg;
+                return;
+            }
+            if (!isNaN(cantidad) && cantidad > stock) {
+                const msg = 'No puede superar el stock actual (' + stock + ' unidades).';
+                inpCant.setCustomValidity(msg);
+                inpCant.classList.add('is-invalid');
+                errCant.textContent = msg;
+                return;
+            }
+            if (!isNaN(precioOferta) && precioOferta > 0 && !isNaN(cantidad) && cantidad > 0) {
+                const descuento = Math.round(100 - precioOferta * 100 / precio);
+                resumenOf.textContent = clp.format(precio) + ' → ' + clp.format(precioOferta)
+                    + ' (' + descuento + '% de descuento) para las próximas ' + cantidad
+                    + ' unidad(es). Ahorro por unidad: ' + clp.format(precio - precioOferta) + '.';
+                resumenOf.classList.remove('d-none');
+            }
+        }
+
+        selProd.addEventListener('change', revisarOferta);
+        inpPrecio.addEventListener('input', revisarOferta);
+        inpCant.addEventListener('input', revisarOferta);
+        revisarOferta();
+    }
+
     const formMov = document.getElementById('form-movimiento');
     if (formMov) {
         const motivos      = JSON.parse(formMov.dataset.motivos);
@@ -117,6 +173,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             info.textContent = 'Stock disponible: ' + stock + ' · Stock mínimo: ' + minimo
                              + ' · Precio: ' + pesos.format(precio);
+            if (parseInt(opcion.dataset.ofertaPrecio, 10) > 0) {
+                info.textContent += ' · Oferta: ' + pesos.format(parseInt(opcion.dataset.ofertaPrecio, 10))
+                                  + ' (quedan ' + opcion.dataset.ofertaRestante + ')';
+            }
             if (stock < minimo) {
                 info.textContent += ' · ⚠ Stock crítico';
                 info.className = 'form-text text-danger fw-semibold';
@@ -138,7 +198,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const nuevoStock = tipo === 'SALIDA' ? stock - cantidad : stock + cantidad;
             let texto = '';
             if (esVenta) {
-                texto = 'Total de la venta: ' + pesos.format(cantidad * precio) + '. ';
+                const precioOferta = parseInt(opcion.dataset.ofertaPrecio, 10) || 0;
+                const restante = parseInt(opcion.dataset.ofertaRestante, 10) || 0;
+                const enOferta = precioOferta > 0 ? Math.min(cantidad, restante) : 0;
+                const total = enOferta * precioOferta + (cantidad - enOferta) * precio;
+                texto = 'Total de la venta: ' + pesos.format(total) + '. ';
+                if (enOferta > 0) {
+                    texto += enOferta + ' con oferta a ' + pesos.format(precioOferta);
+                    if (cantidad > enOferta) {
+                        texto += ' y ' + (cantidad - enOferta) + ' a precio normal';
+                    }
+                    texto += '. ';
+                }
             }
             texto += 'Stock después del movimiento: ' + nuevoStock + '.';
             if (nuevoStock < minimo) {

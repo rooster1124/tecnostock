@@ -1,11 +1,7 @@
 <?php
-/**
- * Inicio de sesión (RF01).
- */
 require_once __DIR__ . '/config/conexion.php';
 require_once __DIR__ . '/includes/funciones.php';
 
-// Si ya inició sesión, va directo al panel
 if (!empty($_SESSION['id_usuario'])) {
     header('Location: ' . BASE_URL . 'inicio.php');
     exit;
@@ -18,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $correo = texto($_POST['correo'] ?? '');
     $clave  = is_string($_POST['clave'] ?? null) ? $_POST['clave'] : '';
 
-    // 1. Validación en el servidor (se repite aunque el navegador ya validó)
     if (!csrf_valido()) {
         $error = 'La sesión expiró. Recargue la página e intente nuevamente.';
     } elseif ($correo === '' || $clave === '') {
@@ -26,24 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
         $error = 'El correo no tiene un formato válido.';
     } else {
-        // 2. Buscar al usuario con una consulta preparada
         $sql  = 'SELECT id_usuario, nombre, clave, rol FROM usuario WHERE correo = ? AND estado = 1';
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$correo]);
         $usuario = $stmt->fetch();
 
-        // 3. Comparar la contraseña escrita con el hash guardado
         if ($usuario && password_verify($clave, $usuario['clave'])) {
-            session_regenerate_id(true); // nueva sesión al ingresar (seguridad)
+            session_regenerate_id(true);
             $_SESSION['id_usuario'] = $usuario['id_usuario'];
             $_SESSION['nombre']     = $usuario['nombre'];
-            $_SESSION['rol']        = $usuario['rol'];   // ENCARGADO o VENDEDOR (permisos)
+            $_SESSION['rol']        = $usuario['rol'];
 
             header('Location: ' . BASE_URL . 'inicio.php');
             exit;
         }
 
-        // Mensaje genérico: no revela si falló el correo o la contraseña
         $error = 'Correo o contraseña incorrectos.';
     }
 }

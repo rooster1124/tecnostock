@@ -1,10 +1,4 @@
 <?php
-/**
- * Protege las páginas internas.
- * Se incluye al inicio de cada página que requiere haber iniciado sesión.
- * Si no hay sesión, redirige al login.
- */
-
 require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/funciones.php';
 

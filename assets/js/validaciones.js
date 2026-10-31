@@ -1,18 +1,7 @@
-/**
- * Validaciones en el navegador (cliente).
- * Avisan al usuario al instante, ANTES de enviar el formulario.
- * IMPORTANTE: PHP vuelve a validar todo en el servidor, porque esta parte
- * se puede desactivar desde el navegador.
- */
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ------------------------------------------------------------------
-    // 1. Formularios con la clase "needs-validation" (estilo Bootstrap)
-    //    Si hay campos inválidos, no se envía y se marcan en rojo.
-    // ------------------------------------------------------------------
     document.querySelectorAll('form.needs-validation').forEach(function (form) {
         form.addEventListener('submit', function (evento) {
-            // Quitar espacios al inicio y al final de los campos de texto
             form.querySelectorAll('input[type="text"], input[type="email"], textarea').forEach(function (campo) {
                 if (!campo.readOnly) {
                     campo.value = campo.value.trim();
@@ -22,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!form.checkValidity()) {
                 evento.preventDefault();
                 evento.stopPropagation();
-                // Lleva el foco al primer campo con error
                 const primero = form.querySelector(':invalid');
                 if (primero) {
                     primero.focus();
@@ -32,9 +20,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ------------------------------------------------------------------
-    // 2. Confirmación antes de acciones importantes (desactivar, eliminar)
-    // ------------------------------------------------------------------
     document.querySelectorAll('form[data-confirm]').forEach(function (form) {
         form.addEventListener('submit', function (evento) {
             if (!confirm(form.dataset.confirm)) {
@@ -43,18 +28,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ------------------------------------------------------------------
-    // 3. Código de producto en mayúsculas mientras se escribe
-    // ------------------------------------------------------------------
     document.querySelectorAll('input[data-mayusculas]').forEach(function (campo) {
         campo.addEventListener('input', function () {
             campo.value = campo.value.toUpperCase();
         });
     });
 
-    // ------------------------------------------------------------------
-    // 4. No permitir números negativos ni decimales en campos numéricos
-    // ------------------------------------------------------------------
     document.querySelectorAll('input[type="number"]').forEach(function (campo) {
         campo.addEventListener('input', function () {
             const valor = campo.value;
@@ -66,10 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ------------------------------------------------------------------
-    // 5. Formulario de movimientos: motivos según el tipo, stock disponible
-    //    y total de la venta en tiempo real
-    // ------------------------------------------------------------------
     const formMov = document.getElementById('form-movimiento');
     if (formMov) {
         const motivos      = JSON.parse(formMov.dataset.motivos);
@@ -87,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return marcado ? marcado.value : '';
         }
 
-        // Cambia la lista de motivos cuando se cambia entre Entrada y Salida
         function cargarMotivos() {
             const tipo = tipoActual();
             const anterior = selMotivo.value;
@@ -103,7 +77,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Muestra el stock, valida la cantidad y calcula el total
         function actualizar() {
             const opcion   = selProducto.selectedOptions[0];
             const tipo     = tipoActual();
@@ -136,7 +109,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // RN04: una salida no puede dejar el stock bajo cero
             if (tipo === 'SALIDA' && cantidad > stock) {
                 const msg = 'Stock insuficiente: solo hay ' + stock + ' unidad(es).';
                 inpCantidad.setCustomValidity(msg);

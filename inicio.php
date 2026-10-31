@@ -1,10 +1,6 @@
 <?php
-/**
- * Panel de inicio: resumen del inventario, ventas del día y alerta de stock crítico (RF08).
- */
 require_once __DIR__ . '/includes/sesion.php';
 
-// Totales para las tarjetas
 $totalProductos = (int) $pdo->query('SELECT COUNT(*) FROM producto WHERE estado = 1')->fetchColumn();
 $totalCriticos  = (int) $pdo->query('SELECT COUNT(*) FROM producto WHERE estado = 1 AND stock_actual < stock_minimo')->fetchColumn();
 $ventasHoy      = $pdo->query(
@@ -13,7 +9,6 @@ $ventasHoy      = $pdo->query(
 )->fetch();
 $movimientosHoy = (int) $pdo->query('SELECT COUNT(*) FROM movimiento WHERE DATE(fecha_hora) = CURDATE()')->fetchColumn();
 
-// Productos activos bajo su stock mínimo, del más urgente al menos urgente
 $criticosLista = $pdo->query(
     'SELECT p.id_producto, p.codigo, p.nombre, c.nombre AS categoria, p.stock_actual, p.stock_minimo
      FROM producto p
@@ -22,7 +17,6 @@ $criticosLista = $pdo->query(
      ORDER BY (p.stock_minimo - p.stock_actual) DESC, p.nombre'
 )->fetchAll();
 
-// Últimos 5 movimientos
 $ultimos = $pdo->query(
     'SELECT m.fecha_hora, m.tipo, m.motivo, m.cantidad, p.nombre AS producto
      FROM movimiento m JOIN producto p ON p.id_producto = m.id_producto

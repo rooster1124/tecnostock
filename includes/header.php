@@ -1,19 +1,11 @@
 <?php
-/**
- * Encabezado común: HTML inicial, Bootstrap y barra de navegación.
- * Antes de incluirlo, cada página define $titulo y $seccion.
- */
 $titulo  = $titulo ?? 'TecnoStock';
 $seccion = $seccion ?? '';
 
-// Cantidad de productos activos con stock crítico, para el aviso del menú (RF08)
 $criticos = (int) $pdo->query(
     'SELECT COUNT(*) FROM producto WHERE estado = 1 AND stock_actual < stock_minimo'
 )->fetchColumn();
 
-/**
- * Devuelve la clase "active" si el enlace corresponde a la sección actual.
- */
 function activo(string $nombre, string $seccion): string
 {
     return $nombre === $seccion ? ' active' : '';

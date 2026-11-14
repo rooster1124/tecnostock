@@ -112,7 +112,8 @@ Los permisos se controlan en el servidor (PHP), no solo ocultando botones: si un
 - **Borrado lógico.** Productos y categorías tienen un campo `estado` (activo/inactivo) en vez de eliminarse, para conservar el historial.
 - **Transacciones.** Registrar un movimiento y actualizar el stock ocurren dentro de una misma transacción: si una parte falla, no se guarda ninguna. Además, la fila del producto se bloquea (`FOR UPDATE`) para que dos ventas simultáneas no dejen el stock negativo.
 - **Ofertas en su propia tabla.** Una oferta no cambia el precio del producto: guarda su precio, cuántas unidades cubre y cuántas lleva vendidas. Si una venta supera las unidades que quedan en oferta, se registra en dos movimientos (una parte a precio de oferta y otra a precio normal), y cada movimiento con oferta guarda `id_oferta` para poder auditarlo.
-- **Seguridad.** Consultas preparadas (PDO), contraseñas con `password_hash`, token CSRF en todos los formularios POST, escape de datos con `htmlspecialchars` y bloqueo de carpetas internas con `.htaccess`.
+- **Seguridad.** Consultas preparadas (PDO), contraseñas con `password_hash`, token CSRF en todos los formularios POST, escape de datos con `htmlspecialchars`. Solo la carpeta `public/` es accesible desde el navegador; el backend (`app/`), el script SQL y la documentación quedan bloqueados.
+- **Frontend y backend separados.** Cada página tiene dos archivos: un controlador en `public/` (PHP: permisos, validación, consultas y transacciones) y una vista en `app/vistas/` (HTML con Bootstrap, que solo muestra los datos que le entrega el controlador).
 
 ## 9. Tecnologías
 
@@ -132,7 +133,7 @@ Los permisos se controlan en el servidor (PHP), no solo ocultando botones: si un
 1. Instalar XAMPP e iniciar Apache y MySQL.
 2. Clonar o copiar este repositorio en `C:\xampp\htdocs\tecnostock`.
 3. Abrir `http://localhost/phpmyadmin` e importar `database/tecnostock.sql`.
-4. Abrir `http://localhost/tecnostock`.
+4. Abrir `http://localhost/tecnostock`. El archivo `.htaccess` de la raíz redirige cada dirección a la carpeta `public/` (requiere `mod_rewrite`, activo por defecto en XAMPP).
 5. Ingresar con una de las cuentas de prueba:
 
 | Rol | Correo | Contraseña |
@@ -144,20 +145,36 @@ Los permisos se controlan en el servidor (PHP), no solo ocultando botones: si un
 
 ## 11. Estructura del proyecto
 
+El proyecto separa lo que ve el navegador (**frontend**) de lo que se ejecuta en el servidor (**backend**):
+
 ```
 tecnostock/
-├── assets/        CSS y JavaScript (validaciones y gráfico)
-├── categorias/    CRUD de categorías
-├── config/        Conexión a la base de datos
-├── database/      Script SQL
-├── docs/          Diagrama ER, casos de prueba y evidencias
-├── includes/      Encabezado, pie y control de sesión
-├── movimientos/   Ventas, carga de stock, otros movimientos e historial
-├── ofertas/       Crear, listar y cancelar ofertas
-├── productos/     CRUD de productos
-├── index.php      Inicio de sesión
-└── inicio.php     Panel de inicio con resumen y gráfico
+├── .htaccess              Redirige todas las direcciones a public/
+├── public/                ÚNICA carpeta accesible desde el navegador
+│   ├── assets/            FRONTEND: estilos.css, validaciones.js, grafico.js
+│   ├── index.php          Controlador: inicio de sesión
+│   ├── inicio.php         Controlador: panel de inicio
+│   ├── logout.php         Cierre de sesión
+│   ├── categorias/        Controladores: listar, crear/editar, activar/desactivar
+│   ├── productos/         Controladores: listar, crear/editar, activar/desactivar, eliminar
+│   ├── movimientos/       Controladores: historial y registro de ventas y movimientos
+│   └── ofertas/           Controladores: listar, crear y cancelar ofertas
+├── app/                   BACKEND, bloqueado para el navegador
+│   ├── config/            conexion.php: datos de conexión a MySQL (PDO)
+│   ├── nucleo/            arranque.php, sesion.php y funciones.php (seguridad, roles, validación)
+│   └── vistas/            FRONTEND: plantillas HTML con Bootstrap
+│       ├── layout/        head.php, header.php (menú) y footer.php
+│       ├── login.php, inicio.php
+│       └── categorias/, productos/, movimientos/, ofertas/
+├── database/              Script SQL (bloqueado)
+└── docs/                  Diagrama ER y casos de prueba (bloqueado)
 ```
+
+**Cómo funciona una página**, por ejemplo `productos/form.php`:
+
+1. El navegador pide `localhost/tecnostock/productos/form.php` y el `.htaccess` lo dirige a `public/productos/form.php`.
+2. El **controlador** carga `app/nucleo/sesion.php` (conexión, funciones y control de sesión), revisa permisos, valida los datos y ejecuta las consultas.
+3. Al final llama a su **vista**, `app/vistas/productos/form.php`, que arma el HTML con los datos ya preparados.
 
 ## 12. Modelo de datos
 

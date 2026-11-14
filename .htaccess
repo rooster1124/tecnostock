@@ -1,7 +1,4 @@
 Options -Indexes
 
-RedirectMatch 404 /(\.git|config|includes|database|docs)(/|$)
-
-<FilesMatch "\.(sql|md|gitkeep|gitignore|log|ini)$">
-    Require all denied
-</FilesMatch>
+RewriteEngine On
+RewriteRule ^(?!public/)(.*)$ public/$1 [L]
